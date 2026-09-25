@@ -20,8 +20,11 @@ SMPTE timecode and frame rate types.
 
 The IvorSMPTE framework provides SMPTE timecode and frame rate types written in
 Swift. A timecode is expressed in hours, minutes, seconds, frames, and
-hundredths of a frame at one of four standard frame rates: 24, 25, 29.97
-(drop-frame), and 30 frames per second.
+hundredths of a frame at one of the standard frame rates: 23.976, 24, 25, 29.97
+(drop-frame or non-drop-frame), 30, 50, 59.94 (drop-frame or non-drop-frame),
+and 60 frames per second. Timecodes can be parsed from and formatted as
+`HH:MM:SS:FF` strings, and converted to and from an exact number of seconds
+since midnight, with drop-frame numbering handled throughout.
 
 ## <a name="requirements">Requirements</a>
 
@@ -41,7 +44,7 @@ To add IvorSMPTE to a Swift package, add it to the `dependencies` in your
 ```swift
 dependencies: [
     .package(url: "https://github.com/eBardX/IvorSMPTE.git",
-             .upToNextMajor(from: "1.0.0"))
+             .upToNextMinor(from: "0.1.0"))
 ]
 ```
 
@@ -60,7 +63,8 @@ Dependencies…** and enter the repository URL:
 https://github.com/eBardX/IvorSMPTE.git
 ```
 
-IvorSMPTE has no dependencies.
+IvorSMPTE depends on [XestiNumbers][xestinumbers], for exact rational frame
+rates and times.
 
 ## <a name="quick_start">Quick Start</a>
 
@@ -74,10 +78,17 @@ let start = SMPTETime(frameRate: .fps25,
                       second: 0,
                       frame: 0,
                       fraction: 0)
+
+// Drop-frame timecode uses `;` before the frame number.
+if let time = SMPTETime(string: "01:00:03;12",
+                        frameRate: .fps2997) {
+    print(time.elapsedSeconds)  // 18016999/5000 (about 3,603.4 seconds)
+}
 ```
 
-The initializer is failable: it returns `nil` if any component is out of
-range, such as a frame number that is not less than the nominal frame rate.
+The initializers are failable: they return `nil` if any component is out of
+range, such as a frame number that is not less than the nominal frame rate, or a
+frame number that drop-frame timecode skips.
 
 ## <a name="reference_documentation">Reference Documentation</a>
 
@@ -95,3 +106,4 @@ IvorSMPTE is available under [the MIT license][license].
 [license]:  https://github.com/eBardX/IvorSMPTE/blob/main/LICENSE.md
 [refdoc]:   https://eBardX.github.io/ivor-packages-docs/documentation/ivorsmpte
 [spm]:      https://swift.org/package-manager/
+[xestinumbers]: https://github.com/eBardX/XestiNumbers

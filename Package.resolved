@@ -1,0 +1,42 @@
+{
+  "originHash" : "fec6d0e0332e5aefd11cf869b05e65c2272f90d8b85791ede85ab26774fbe746",
+  "pins" : [
+    {
+      "identity" : "bigint",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/attaswift/BigInt.git",
+      "state" : {
+        "revision" : "63feef7820abb1a8fb08587d7da56bb0b7db8751",
+        "version" : "6.0.1"
+      }
+    },
+    {
+      "identity" : "swift-numerics",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/apple/swift-numerics",
+      "state" : {
+        "revision" : "0c0290ff6b24942dadb83a929ffaaa1481df04a2",
+        "version" : "1.1.1"
+      }
+    },
+    {
+      "identity" : "xestinumbers",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/eBardX/XestiNumbers.git",
+      "state" : {
+        "revision" : "1df695e1a3fcc8f553c273b6231032a12386eecb",
+        "version" : "1.3.1"
+      }
+    },
+    {
+      "identity" : "xestitools",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/eBardX/XestiTools.git",
+      "state" : {
+        "revision" : "35a4c43dde224aadcadad66dac7a35104537694d",
+        "version" : "10.0.0"
+      }
+    }
+  ],
+  "version" : 3
+}
