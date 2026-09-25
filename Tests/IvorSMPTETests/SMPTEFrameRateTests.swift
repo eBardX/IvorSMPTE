@@ -11,13 +11,35 @@ struct SMPTEFrameRateTests {
 
 extension SMPTEFrameRateTests {
     @Test
+    func allCases() {
+        let allCases = SMPTEFrameRate.allCases
+
+        #expect(allCases.count == 10)
+        #expect(Set(allCases).count == 10)
+    }
+
+    @Test
     func description() {
         #expect(SMPTEFrameRate.fps23976.description == "23.976")
+        #expect(SMPTEFrameRate.fps24.description == "24")
         #expect(SMPTEFrameRate.fps25.description == "25")
         #expect(SMPTEFrameRate.fps2997.description == "29.97DF")
         #expect(SMPTEFrameRate.fps2997NonDrop.description == "29.97")
+        #expect(SMPTEFrameRate.fps30.description == "30")
+        #expect(SMPTEFrameRate.fps50.description == "50")
         #expect(SMPTEFrameRate.fps5994.description == "59.94DF")
+        #expect(SMPTEFrameRate.fps5994NonDrop.description == "59.94")
         #expect(SMPTEFrameRate.fps60.description == "60")
+    }
+
+    @Test
+    func droppedFramesPerMinute() {
+        #expect(SMPTEFrameRate.fps2997.droppedFramesPerMinute == 2)
+        #expect(SMPTEFrameRate.fps5994.droppedFramesPerMinute == 4)
+
+        for frameRate in SMPTEFrameRate.allCases where !frameRate.isDropFrame {
+            #expect(frameRate.droppedFramesPerMinute == 0)
+        }
     }
 
     @Test
@@ -51,16 +73,16 @@ extension SMPTEFrameRateTests {
         #expect(SMPTEFrameRate.fps30 != .fps2997)
     }
 
-    @Test(arguments: SMPTEFrameRate.allCases)
-    func init_string_roundTrip(frameRate: SMPTEFrameRate) {
-        #expect(SMPTEFrameRate(string: frameRate.description) == frameRate)
-    }
-
     @Test
     func init_string_invalid() {
         #expect(SMPTEFrameRate(string: "") == nil)
         #expect(SMPTEFrameRate(string: "29.97 DF") == nil)
         #expect(SMPTEFrameRate(string: "48") == nil)
+    }
+
+    @Test(arguments: SMPTEFrameRate.allCases)
+    func init_string_roundTrip(frameRate: SMPTEFrameRate) {
+        #expect(SMPTEFrameRate(string: frameRate.description) == frameRate)
     }
 
     @Test

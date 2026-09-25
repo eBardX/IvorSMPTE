@@ -11,29 +11,6 @@ struct SMPTETimeTests {
 
 extension SMPTETimeTests {
     @Test
-    func equality() {
-        let time1 = SMPTETime(frameRate: .fps24, hour: 1, minute: 2, second: 3, frame: 4, fraction: 5)!  // swiftlint:disable:this force_unwrapping
-        let time2 = SMPTETime(frameRate: .fps24, hour: 1, minute: 2, second: 3, frame: 4, fraction: 5)!  // swiftlint:disable:this force_unwrapping
-
-        #expect(time1 == time2)
-    }
-
-    @Test
-    func frameCount_fps2997() {
-        #expect(SMPTETime(frameRate: .fps2997, hour: 0, minute: 0, second: 59, frame: 29, fraction: 0)?.frameCount == 1_799)
-        #expect(SMPTETime(frameRate: .fps2997, hour: 0, minute: 1, second: 0, frame: 2, fraction: 0)?.frameCount == 1_800)
-        #expect(SMPTETime(frameRate: .fps2997, hour: 0, minute: 10, second: 0, frame: 0, fraction: 0)?.frameCount == 17_982)
-        #expect(SMPTETime(frameRate: .fps2997, hour: 1, minute: 0, second: 0, frame: 0, fraction: 0)?.frameCount == 107_892)
-        #expect(SMPTETime(frameRate: .fps2997, hour: 23, minute: 59, second: 59, frame: 29, fraction: 0)?.frameCount == 2_589_407)
-    }
-
-    @Test
-    func frameCount_fps30() {
-        #expect(SMPTETime(frameRate: .fps30, hour: 0, minute: 1, second: 0, frame: 0, fraction: 0)?.frameCount == 1_800)
-        #expect(SMPTETime(frameRate: .fps30, hour: 23, minute: 59, second: 59, frame: 29, fraction: 0)?.frameCount == 2_591_999)
-    }
-
-    @Test
     func description() {
         #expect(SMPTETime(frameRate: .fps25, hour: 1, minute: 0, second: 3, frame: 12, fraction: 0)?.description == "01:00:03:12")
         #expect(SMPTETime(frameRate: .fps2997, hour: 1, minute: 0, second: 3, frame: 12, fraction: 0)?.description == "01:00:03;12")
@@ -72,6 +49,41 @@ extension SMPTETimeTests {
         #expect(abs(time.elapsedSeconds - 3_600) == Number(numerator: 18, denominator: 5_000))
     }
 
+    @Test(arguments: SMPTEFrameRate.allCases)
+    func elapsedSeconds_roundTrip(frameRate: SMPTEFrameRate) throws {
+        let lastFrameCount = frameRate.framesPerDay - 1
+
+        for frameCount in Array(0..<2_000) + Array((lastFrameCount - 2_000)...lastFrameCount) {
+            let time = try #require(SMPTETime(frameRate: frameRate, frameCount: frameCount, fraction: frameCount % 100))
+            let roundTrip = SMPTETime(frameRate: frameRate, elapsedSeconds: time.elapsedSeconds)
+
+            #expect(roundTrip == time)
+        }
+    }
+
+    @Test
+    func equality() {
+        let time1 = SMPTETime(frameRate: .fps24, hour: 1, minute: 2, second: 3, frame: 4, fraction: 5)!  // swiftlint:disable:this force_unwrapping
+        let time2 = SMPTETime(frameRate: .fps24, hour: 1, minute: 2, second: 3, frame: 4, fraction: 5)!  // swiftlint:disable:this force_unwrapping
+
+        #expect(time1 == time2)
+    }
+
+    @Test
+    func frameCount_fps2997() {
+        #expect(SMPTETime(frameRate: .fps2997, hour: 0, minute: 0, second: 59, frame: 29, fraction: 0)?.frameCount == 1_799)
+        #expect(SMPTETime(frameRate: .fps2997, hour: 0, minute: 1, second: 0, frame: 2, fraction: 0)?.frameCount == 1_800)
+        #expect(SMPTETime(frameRate: .fps2997, hour: 0, minute: 10, second: 0, frame: 0, fraction: 0)?.frameCount == 17_982)
+        #expect(SMPTETime(frameRate: .fps2997, hour: 1, minute: 0, second: 0, frame: 0, fraction: 0)?.frameCount == 107_892)
+        #expect(SMPTETime(frameRate: .fps2997, hour: 23, minute: 59, second: 59, frame: 29, fraction: 0)?.frameCount == 2_589_407)
+    }
+
+    @Test
+    func frameCount_fps30() {
+        #expect(SMPTETime(frameRate: .fps30, hour: 0, minute: 1, second: 0, frame: 0, fraction: 0)?.frameCount == 1_800)
+        #expect(SMPTETime(frameRate: .fps30, hour: 23, minute: 59, second: 59, frame: 29, fraction: 0)?.frameCount == 2_591_999)
+    }
+
     @Test
     func frameCount_fps5994() {
         #expect(SMPTETime(frameRate: .fps5994, hour: 0, minute: 0, second: 59, frame: 59, fraction: 0)?.frameCount == 3_599)
@@ -88,18 +100,6 @@ extension SMPTETimeTests {
             let time = try #require(SMPTETime(frameRate: frameRate, frameCount: frameCount, fraction: 0))
 
             #expect(time.frameCount == frameCount)
-        }
-    }
-
-    @Test(arguments: SMPTEFrameRate.allCases)
-    func elapsedSeconds_roundTrip(frameRate: SMPTEFrameRate) throws {
-        let lastFrameCount = frameRate.framesPerDay - 1
-
-        for frameCount in Array(0..<2_000) + Array((lastFrameCount - 2_000)...lastFrameCount) {
-            let time = try #require(SMPTETime(frameRate: frameRate, frameCount: frameCount, fraction: frameCount % 100))
-            let roundTrip = SMPTETime(frameRate: frameRate, elapsedSeconds: time.elapsedSeconds)
-
-            #expect(roundTrip == time)
         }
     }
 
@@ -121,32 +121,12 @@ extension SMPTETimeTests {
     }
 
     @Test
-    func init_frameCount_fps2997() {
-        let time = SMPTETime(frameRate: .fps2997, frameCount: 1_800, fraction: 50)
+    func inequality_differentFrameRate() {
+        let time1 = SMPTETime(frameRate: .fps24, hour: 1, minute: 2, second: 3, frame: 4, fraction: 5)
+        let time2 = SMPTETime(frameRate: .fps25, hour: 1, minute: 2, second: 3, frame: 4, fraction: 5)
 
-        #expect(time?.hour == 0)
-        #expect(time?.minute == 1)
-        #expect(time?.second == 0)
-        #expect(time?.frame == 2)
-        #expect(time?.fraction == 50)
-    }
-
-    @Test
-    func init_frameCount_fps2997_tenthMinute() {
-        let time = SMPTETime(frameRate: .fps2997, frameCount: 17_982, fraction: 0)
-
-        #expect(time?.minute == 10)
-        #expect(time?.second == 0)
-        #expect(time?.frame == 0)
-    }
-
-    @Test
-    func init_frameCount_fps5994() {
-        let time = SMPTETime(frameRate: .fps5994, frameCount: 3_600, fraction: 0)
-
-        #expect(time?.minute == 1)
-        #expect(time?.second == 0)
-        #expect(time?.frame == 4)
+        #expect(time1 != nil)
+        #expect(time1 != time2)
     }
 
     @Test
@@ -204,12 +184,41 @@ extension SMPTETimeTests {
     }
 
     @Test
+    func init_frameCount_fps2997() {
+        let time = SMPTETime(frameRate: .fps2997, frameCount: 1_800, fraction: 50)
+
+        #expect(time?.hour == 0)
+        #expect(time?.minute == 1)
+        #expect(time?.second == 0)
+        #expect(time?.frame == 2)
+        #expect(time?.fraction == 50)
+    }
+
+    @Test
+    func init_frameCount_fps2997_tenthMinute() {
+        let time = SMPTETime(frameRate: .fps2997, frameCount: 17_982, fraction: 0)
+
+        #expect(time?.minute == 10)
+        #expect(time?.second == 0)
+        #expect(time?.frame == 0)
+    }
+
+    @Test
     func init_frameCount_fps30() {
         let time = SMPTETime(frameRate: .fps30, frameCount: 1_800, fraction: 0)
 
         #expect(time?.minute == 1)
         #expect(time?.second == 0)
         #expect(time?.frame == 0)
+    }
+
+    @Test
+    func init_frameCount_fps5994() {
+        let time = SMPTETime(frameRate: .fps5994, frameCount: 3_600, fraction: 0)
+
+        #expect(time?.minute == 1)
+        #expect(time?.second == 0)
+        #expect(time?.frame == 4)
     }
 
     @Test
@@ -235,12 +244,6 @@ extension SMPTETimeTests {
     }
 
     @Test
-    func init_invalid_frame_fps50() {
-        #expect(SMPTETime(frameRate: .fps50, hour: 0, minute: 0, second: 0, frame: 49, fraction: 0) != nil)
-        #expect(SMPTETime(frameRate: .fps50, hour: 0, minute: 0, second: 0, frame: 50, fraction: 0) == nil)
-    }
-
-    @Test
     func init_invalid_fraction() {
         #expect(SMPTETime(frameRate: .fps24, hour: 0, minute: 0, second: 0, frame: 0, fraction: 100) == nil)
     }
@@ -248,6 +251,12 @@ extension SMPTETimeTests {
     @Test
     func init_invalid_frame() {
         #expect(SMPTETime(frameRate: .fps24, hour: 0, minute: 0, second: 0, frame: 24, fraction: 0) == nil)
+    }
+
+    @Test
+    func init_invalid_frame_fps50() {
+        #expect(SMPTETime(frameRate: .fps50, hour: 0, minute: 0, second: 0, frame: 49, fraction: 0) != nil)
+        #expect(SMPTETime(frameRate: .fps50, hour: 0, minute: 0, second: 0, frame: 50, fraction: 0) == nil)
     }
 
     @Test
@@ -278,6 +287,13 @@ extension SMPTETimeTests {
 
         #expect(SMPTETime(string: "01:00:03;12.50", frameRate: .fps2997) == expected)
         #expect(SMPTETime(string: "01:00:03:12.50", frameRate: .fps2997) == expected)
+    }
+
+    @Test
+    func init_string_fraction() {
+        let time = SMPTETime(string: "01:02:03:04.99", frameRate: .fps25)
+
+        #expect(time == SMPTETime(frameRate: .fps25, hour: 1, minute: 2, second: 3, frame: 4, fraction: 99))
     }
 
     @Test

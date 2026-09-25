@@ -7,6 +7,31 @@ public struct SMPTETime {
 
     // MARK: Public Initializers
 
+    /// Creates a new `SMPTETime` instance from an exact number of seconds
+    /// since midnight (00:00:00:00), or `nil` if the number of seconds is
+    /// negative or is not a finite real number.
+    ///
+    /// The number of seconds is rounded to the nearest hundredth of a frame.
+    /// Timecode wraps around to 00:00:00:00 after 24 hours.
+    ///
+    /// - Parameter frameRate:       The SMPTE frame rate.
+    /// - Parameter elapsedSeconds:  The number of seconds since midnight.
+    public init?(frameRate: SMPTEFrameRate,
+                 elapsedSeconds: Number) {
+        guard elapsedSeconds.isReal,
+              elapsedSeconds.isFinite,
+              !elapsedSeconds.isNegative
+        else { return nil }
+
+        let hundredths = round(elapsedSeconds * frameRate.numberValue * 100).exact
+        let hundredthsPerDay = Number(frameRate.framesPerDay * 100)
+        let (frameCount, fraction) = modulo(hundredths, hundredthsPerDay).uintValue.quotientAndRemainder(dividingBy: 100)
+
+        self.init(frameRate: frameRate,
+                  frameCount: frameCount,
+                  fraction: fraction)
+    }
+
     /// Creates a new `SMPTETime` instance from a number of frames since
     /// midnight (00:00:00:00), or `nil` if the frame count or fraction is out
     /// of range for the given frame rate.
@@ -15,10 +40,10 @@ public struct SMPTETime {
     /// the resulting components skip the frame numbers that drop-frame
     /// timecode omits.
     ///
-    /// - Parameter frameRate:  The SMPTE frame rate.
-    /// - Parameter frameCount: The number of frames since midnight. Must be
-    ///                         less than the frame rate’s `framesPerDay`.
-    /// - Parameter fraction:   The sub-frame fraction component (0–99).
+    /// - Parameter frameRate:   The SMPTE frame rate.
+    /// - Parameter frameCount:  The number of frames since midnight. Must be
+    ///                          less than the frame rate’s `framesPerDay`.
+    /// - Parameter fraction:    The sub-frame fraction component (0–99).
     public init?(frameRate: SMPTEFrameRate,
                  frameCount: UInt,
                  fraction: UInt) {
@@ -36,31 +61,6 @@ public struct SMPTETime {
                   minute: minute,
                   second: second,
                   frame: frame,
-                  fraction: fraction)
-    }
-
-    /// Creates a new `SMPTETime` instance from an exact number of seconds
-    /// since midnight (00:00:00:00), or `nil` if the number of seconds is
-    /// negative or is not a finite real number.
-    ///
-    /// The number of seconds is rounded to the nearest hundredth of a frame.
-    /// Timecode wraps around to 00:00:00:00 after 24 hours.
-    ///
-    /// - Parameter frameRate:      The SMPTE frame rate.
-    /// - Parameter elapsedSeconds: The number of seconds since midnight.
-    public init?(frameRate: SMPTEFrameRate,
-                 elapsedSeconds: Number) {
-        guard elapsedSeconds.isReal,
-              elapsedSeconds.isFinite,
-              !elapsedSeconds.isNegative
-        else { return nil }
-
-        let hundredths = round(elapsedSeconds * frameRate.numberValue * 100).exact
-        let hundredthsPerDay = Number(frameRate.framesPerDay * 100)
-        let (frameCount, fraction) = modulo(hundredths, hundredthsPerDay).uintValue.quotientAndRemainder(dividingBy: 100)
-
-        self.init(frameRate: frameRate,
-                  frameCount: frameCount,
                   fraction: fraction)
     }
 

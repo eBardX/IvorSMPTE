@@ -45,8 +45,8 @@ extension SMPTEFrameRate {
     /// Creates a new `SMPTEFrameRate` instance by parsing its string
     /// representation, or `nil` if the string does not name a frame rate.
     ///
-    /// - Parameter string: The string representation of the frame rate (as
-    ///                     produced by `description`).
+    /// - Parameter string:  The string representation of the frame rate (as
+    ///                      produced by `description`).
     public init?(string: String) {
         guard let frameRate = Self.allCases.first(where: { $0.description == string })
         else { return nil }
@@ -86,6 +86,13 @@ extension SMPTEFrameRate {
             Number(numerator: 24_000,
                    denominator: 1_001)
 
+        case .fps24,
+             .fps25,
+             .fps30,
+             .fps50,
+             .fps60:
+            Number(uintValue)
+
         case .fps2997,
              .fps2997NonDrop:
             Number(numerator: 30_000,
@@ -95,13 +102,6 @@ extension SMPTEFrameRate {
              .fps5994NonDrop:
             Number(numerator: 60_000,
                    denominator: 1_001)
-
-        case .fps24,
-             .fps25,
-             .fps30,
-             .fps50,
-             .fps60:
-            Number(uintValue)
         }
     }
 
