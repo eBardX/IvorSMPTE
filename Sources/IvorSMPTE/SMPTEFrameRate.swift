@@ -14,26 +14,40 @@ public enum SMPTEFrameRate {
     /// 25 frames per second.
     case fps25
 
-    /// 29.97 (30000/1001) frames per second (drop-frame).
+    /// 29.97 (30000/1001) frames per second (non-drop-frame).
     case fps2997
 
-    /// 29.97 (30000/1001) frames per second (non-drop-frame).
-    case fps2997NonDrop
+    /// 29.97 (30000/1001) frames per second (drop-frame).
+    case fps2997Drop
 
     /// 30 frames per second.
     case fps30
 
+    /// 30 frames per second (drop-frame).
+    ///
+    /// This rate uses drop-frame numbering at a true 30 frames per second, so
+    /// its timecode does not stay in step with real time. It is typically
+    /// used for material that is pulled down to 29.97 drop-frame.
+    case fps30Drop
+
     /// 50 frames per second.
     case fps50
 
-    /// 59.94 (60000/1001) frames per second (drop-frame).
+    /// 59.94 (60000/1001) frames per second (non-drop-frame).
     case fps5994
 
-    /// 59.94 (60000/1001) frames per second (non-drop-frame).
-    case fps5994NonDrop
+    /// 59.94 (60000/1001) frames per second (drop-frame).
+    case fps5994Drop
 
     /// 60 frames per second.
     case fps60
+
+    /// 60 frames per second (drop-frame).
+    ///
+    /// This rate uses drop-frame numbering at a true 60 frames per second, so
+    /// its timecode does not stay in step with real time. It is typically
+    /// used for material that is pulled down to 59.94 drop-frame.
+    case fps60Drop
 }
 
 // MARK: -
@@ -45,9 +59,17 @@ extension SMPTEFrameRate {
     /// Creates a new `SMPTEFrameRate` instance by parsing its string
     /// representation, or `nil` if the string does not name a frame rate.
     ///
+    /// In addition to the strings produced by `description`, this also accepts
+    /// `23.98`, a common alternative name for 23.976 frames per second.
+    ///
     /// - Parameter string:  The string representation of the frame rate (as
     ///                      produced by `description`).
     public init?(string: String) {
+        if string == "23.98" {
+            self = .fps23976
+            return
+        }
+
         guard let frameRate = Self.allCases.first(where: { $0.description == string })
         else { return nil }
 
@@ -69,9 +91,10 @@ extension SMPTEFrameRate {
     /// timecode.
     ///
     /// Drop-frame timecode skips frame numbers at the start of every minute
-    /// except minutes 0, 10, 20, 30, 40, and 50, so that timecode stays in step
-    /// with real time: frame numbers 0 and 1 at 29.97 frames per second, and 0
-    /// through 3 at 59.94 frames per second.
+    /// except minutes 0, 10, 20, 30, 40, and 50: frame numbers 0 and 1 at 29.97
+    /// and 30 frames per second, and 0 through 3 at 59.94 and 60 frames per
+    /// second. At 29.97 and 59.94 frames per second, this keeps timecode in
+    /// step with real time.
     public var isDropFrame: Bool {
         droppedFramesPerMinute > 0
     }
@@ -89,17 +112,19 @@ extension SMPTEFrameRate {
         case .fps24,
              .fps25,
              .fps30,
+             .fps30Drop,
              .fps50,
-             .fps60:
+             .fps60,
+             .fps60Drop:
             Number(uintValue)
 
         case .fps2997,
-             .fps2997NonDrop:
+             .fps2997Drop:
             Number(numerator: 30_000,
                    denominator: 1_001)
 
         case .fps5994,
-             .fps5994NonDrop:
+             .fps5994Drop:
             Number(numerator: 60_000,
                    denominator: 1_001)
         }
@@ -117,16 +142,18 @@ extension SMPTEFrameRate {
             25
 
         case .fps30,
+             .fps30Drop,
              .fps2997,
-             .fps2997NonDrop:
+             .fps2997Drop:
             30
 
         case .fps50:
             50
 
         case .fps60,
+             .fps60Drop,
              .fps5994,
-             .fps5994NonDrop:
+             .fps5994Drop:
             60
         }
     }
@@ -135,10 +162,12 @@ extension SMPTEFrameRate {
 
     internal var droppedFramesPerMinute: UInt {
         switch self {
-        case .fps2997:
+        case .fps30Drop,
+             .fps2997Drop:
             2
 
-        case .fps5994:
+        case .fps60Drop,
+             .fps5994Drop:
             4
 
         default:
@@ -160,7 +189,7 @@ extension SMPTEFrameRate: CustomStringConvertible {
 
     /// The string representation of this frame rate: the number of frames per
     /// second, followed by `DF` for the drop-frame rates, as in `25`,
-    /// `29.97DF`, or `59.94`.
+    /// `29.97DF`, `30DF`, or `59.94`.
     public var description: String {
         switch self {
         case .fps23976:
@@ -173,25 +202,31 @@ extension SMPTEFrameRate: CustomStringConvertible {
             "25"
 
         case .fps2997:
-            "29.97DF"
-
-        case .fps2997NonDrop:
             "29.97"
+
+        case .fps2997Drop:
+            "29.97DF"
 
         case .fps30:
             "30"
+
+        case .fps30Drop:
+            "30DF"
 
         case .fps50:
             "50"
 
         case .fps5994:
-            "59.94DF"
-
-        case .fps5994NonDrop:
             "59.94"
+
+        case .fps5994Drop:
+            "59.94DF"
 
         case .fps60:
             "60"
+
+        case .fps60Drop:
+            "60DF"
         }
     }
 }

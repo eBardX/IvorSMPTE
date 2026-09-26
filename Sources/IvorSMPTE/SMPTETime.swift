@@ -1,6 +1,6 @@
 // © 2025–2026 John Gary Pusey (see LICENSE.md)
 
-public import XestiNumbers
+private import XestiNumbers
 
 /// A SMPTE timecode value specifying a point in time.
 public struct SMPTETime {
@@ -8,32 +8,28 @@ public struct SMPTETime {
     // MARK: Public Initializers
 
     /// Creates a new `SMPTETime` instance from an exact number of seconds
-    /// since midnight (00:00:00:00), or `nil` if the number of seconds is
-    /// negative or is not a finite real number.
+    /// since midnight (00:00:00:00).
     ///
     /// The number of seconds is rounded to the nearest hundredth of a frame.
     /// Timecode wraps around to 00:00:00:00 after 24 hours.
     ///
     /// - Parameter frameRate:       The SMPTE frame rate.
     /// - Parameter elapsedSeconds:  The number of seconds since midnight.
-    public init?(frameRate: SMPTEFrameRate,
-                 elapsedSeconds: Number) {
-        guard elapsedSeconds.isReal,
-              elapsedSeconds.isFinite,
-              !elapsedSeconds.isNegative
-        else { return nil }
-
-        let hundredths = round(elapsedSeconds * frameRate.numberValue * 100).exact
+    public init(frameRate: SMPTEFrameRate,
+                elapsedSeconds: SMPTEExactSeconds) {
+        let hundredths = round(elapsedSeconds.numberValue * frameRate.numberValue * 100).exact
         let hundredthsPerDay = Number(frameRate.framesPerDay * 100)
-        let (frameCount, fraction) = modulo(hundredths, hundredthsPerDay).uintValue.quotientAndRemainder(dividingBy: 100)
+        let (frameCount, subframe) = modulo(hundredths, hundredthsPerDay).uintValue.quotientAndRemainder(dividingBy: 100)
 
+        // The frame count is always less than one day of frames, and the
+        // subframe is always less than 100.
         self.init(frameRate: frameRate,
                   frameCount: frameCount,
-                  fraction: fraction)
+                  subframe: subframe)!  // swiftlint:disable:this force_unwrapping
     }
 
     /// Creates a new `SMPTETime` instance from a number of frames since
-    /// midnight (00:00:00:00), or `nil` if the frame count or fraction is out
+    /// midnight (00:00:00:00), or `nil` if the frame count or subframe is out
     /// of range for the given frame rate.
     ///
     /// At drop-frame rates, frames are numbered using drop-frame timecode, so
@@ -43,10 +39,11 @@ public struct SMPTETime {
     /// - Parameter frameRate:   The SMPTE frame rate.
     /// - Parameter frameCount:  The number of frames since midnight. Must be
     ///                          less than the frame rate’s `framesPerDay`.
-    /// - Parameter fraction:    The sub-frame fraction component (0–99).
+    /// - Parameter subframe:    The subframe component, in hundredths of a
+    ///                          frame (0–99).
     public init?(frameRate: SMPTEFrameRate,
                  frameCount: UInt,
-                 fraction: UInt) {
+                 subframe: UInt) {
         guard frameCount < frameRate.framesPerDay
         else { return nil }
 
@@ -61,7 +58,7 @@ public struct SMPTETime {
                   minute: minute,
                   second: second,
                   frame: frame,
-                  fraction: fraction)
+                  subframe: subframe)
     }
 
     /// Creates a new `SMPTETime` instance with the provided components,
@@ -69,38 +66,40 @@ public struct SMPTETime {
     ///
     /// At drop-frame rates, the components must form a valid drop-frame
     /// timecode: the frame numbers that drop-frame timecode skips (0 and 1 at
-    /// 29.97 frames per second, 0 through 3 at 59.94 frames per second) do not
-    /// exist at the start of any minute other than minutes 0, 10, 20, 30, 40,
-    /// and 50.
+    /// 29.97 and 30 frames per second, 0 through 3 at 59.94 and 60 frames per
+    /// second) do not exist at the start of any minute other than minutes 0,
+    /// 10, 20, 30, 40, and 50.
     ///
     /// - Parameter frameRate:  The SMPTE frame rate.
     /// - Parameter hour:       The hour component (0–23).
     /// - Parameter minute:     The minute component (0–59).
     /// - Parameter second:     The second component (0–59).
-    /// - Parameter frame:      The frame component (0 to frameRate−1).
-    /// - Parameter fraction:   The sub-frame fraction component (0–99).
+    /// - Parameter frame:      The frame component (0 to one less than the
+    ///                         frame rate’s ``SMPTEFrameRate/uintValue``).
+    /// - Parameter subframe:   The subframe component, in hundredths of a
+    ///                         frame (0–99).
     public init?(frameRate: SMPTEFrameRate,
                  hour: UInt,
                  minute: UInt,
                  second: UInt,
                  frame: UInt,
-                 fraction: UInt) {
+                 subframe: UInt) {
         let maxFrame = frameRate.uintValue
 
         guard (0..<24).contains(hour),
               (0..<60).contains(minute),
               (0..<60).contains(second),
               (0..<maxFrame).contains(frame),
-              (0..<100).contains(fraction),
+              (0..<100).contains(subframe),
               !Self._isDroppedFrame(frameRate, minute, second, frame)
         else { return nil }
 
-        self.fraction = fraction
         self.frame = frame
         self.frameRate = frameRate
         self.hour = hour
         self.minute = minute
         self.second = second
+        self.subframe = subframe
     }
 
     /// Creates a new `SMPTETime` instance by parsing its string representation,
@@ -111,7 +110,7 @@ public struct SMPTETime {
     /// written as exactly two decimal digits. At drop-frame rates, the
     /// separator before the frame component may be either `:` or `;`; at other
     /// rates, it must be `:`. The string may end with a period and a two-digit
-    /// sub-frame fraction component, as in `01:00:03;12.50`.
+    /// subframe component, as in `01:00:03;12.50`.
     ///
     /// - Parameter string:     The string representation of the timecode (as
     ///                         produced by `description`).
@@ -130,15 +129,15 @@ public struct SMPTETime {
               let frame = Self._parseComponent(chars[9...10])
         else { return nil }
 
-        let fraction: UInt
+        let subframe: UInt
 
         if chars.count == 14 {
             guard let value = Self._parseComponent(chars[12...13])
             else { return nil }
 
-            fraction = value
+            subframe = value
         } else {
-            fraction = 0
+            subframe = 0
         }
 
         self.init(frameRate: frameRate,
@@ -146,13 +145,10 @@ public struct SMPTETime {
                   minute: minute,
                   second: second,
                   frame: frame,
-                  fraction: fraction)
+                  subframe: subframe)
     }
 
     // MARK: Public Instance Properties
-
-    /// The sub-frame fraction component (0–99).
-    public let fraction: UInt
 
     /// The frame component.
     public let frame: UInt
@@ -168,6 +164,9 @@ public struct SMPTETime {
 
     /// The second component (0–59).
     public let second: UInt
+
+    /// The subframe component, in hundredths of a frame (0–99).
+    public let subframe: UInt
 }
 
 // MARK: -
@@ -177,13 +176,13 @@ extension SMPTETime {
     // MARK: Public Instance Properties
 
     /// The exact number of seconds since midnight (00:00:00:00), including
-    /// the sub-frame fraction component.
+    /// the subframe component.
     ///
     /// For the NTSC-derived rates, this is an exact rational value; for
     /// example, frame 1 at 29.97 frames per second is 1001/30000 seconds after
     /// midnight.
-    public var elapsedSeconds: Number {
-        Number((frameCount * 100) + fraction) / (frameRate.numberValue * 100)
+    public var elapsedSeconds: SMPTEExactSeconds {
+        SMPTEExactSeconds(Number((frameCount * 100) + subframe) / (frameRate.numberValue * 100))
     }
 
     /// The number of frames since midnight (00:00:00:00).
@@ -249,7 +248,7 @@ extension SMPTETime: CustomStringConvertible {
     /// The string representation of this timecode, in the form `HH:MM:SS:FF`.
     ///
     /// At drop-frame rates, the separator before the frame component is `;`
-    /// instead of `:`. If the sub-frame fraction component is nonzero, it is
+    /// instead of `:`. If the subframe component is nonzero, it is
     /// appended after a period, as in `01:00:03;12.50`.
     public var description: String {
         let frameSeparator = frameRate.isDropFrame ? ";" : ":"
@@ -258,10 +257,10 @@ extension SMPTETime: CustomStringConvertible {
             + ":" + Self._formatComponent(second)
             + frameSeparator + Self._formatComponent(frame)
 
-        guard fraction > 0
+        guard subframe > 0
         else { return result }
 
-        return result + "." + Self._formatComponent(fraction)
+        return result + "." + Self._formatComponent(subframe)
     }
 }
 
