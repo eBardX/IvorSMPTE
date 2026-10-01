@@ -99,6 +99,43 @@ extension SMPTEFrameRate {
         droppedFramesPerMinute > 0
     }
 
+    /// The number of frames per second alone, as in `25`, `29.97`, or
+    /// `59.94`.
+    ///
+    /// Unlike ``description``, this does not mark the drop-frame rates, so
+    /// `fps2997` and `fps2997Drop` share the same number description.
+    public var numberDescription: String {
+        switch self {
+        case .fps23976:
+            "23.976"
+
+        case .fps24:
+            "24"
+
+        case .fps25:
+            "25"
+
+        case .fps2997,
+             .fps2997Drop:
+            "29.97"
+
+        case .fps30,
+             .fps30Drop:
+            "30"
+
+        case .fps50:
+            "50"
+
+        case .fps5994,
+             .fps5994Drop:
+            "59.94"
+
+        case .fps60,
+             .fps60Drop:
+            "60"
+        }
+    }
+
     /// The exact frame rate in frames per second.
     ///
     /// For the NTSC-derived rates, this is an exact rational value, such as
@@ -187,47 +224,11 @@ extension SMPTEFrameRate: CustomStringConvertible {
 
     // MARK: Public Instance Properties
 
-    /// The string representation of this frame rate: the number of frames per
-    /// second, followed by `DF` for the drop-frame rates, as in `25`,
-    /// `29.97DF`, `30DF`, or `59.94`.
+    /// The string representation of this frame rate: its
+    /// ``numberDescription``, followed by `DF` for the drop-frame rates, as in
+    /// `25`, `29.97DF`, `30DF`, or `59.94`.
     public var description: String {
-        switch self {
-        case .fps23976:
-            "23.976"
-
-        case .fps24:
-            "24"
-
-        case .fps25:
-            "25"
-
-        case .fps2997:
-            "29.97"
-
-        case .fps2997Drop:
-            "29.97DF"
-
-        case .fps30:
-            "30"
-
-        case .fps30Drop:
-            "30DF"
-
-        case .fps50:
-            "50"
-
-        case .fps5994:
-            "59.94"
-
-        case .fps5994Drop:
-            "59.94DF"
-
-        case .fps60:
-            "60"
-
-        case .fps60Drop:
-            "60DF"
-        }
+        isDropFrame ? numberDescription + "DF" : numberDescription
     }
 }
 

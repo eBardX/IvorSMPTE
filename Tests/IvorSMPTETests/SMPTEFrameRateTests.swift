@@ -121,6 +121,29 @@ extension SMPTEFrameRateTests {
         #expect(SMPTEFrameRate.fps60Drop.isDropFrame)
     }
 
+    @Test(arguments: SMPTEFrameRate.allCases)
+    func description_numberDescription(frameRate: SMPTEFrameRate) {
+        let suffix = frameRate.isDropFrame ? "DF" : ""
+
+        #expect(frameRate.description == frameRate.numberDescription + suffix)
+    }
+
+    @Test
+    func numberDescription() {
+        #expect(SMPTEFrameRate.fps23976.numberDescription == "23.976")
+        #expect(SMPTEFrameRate.fps24.numberDescription == "24")
+        #expect(SMPTEFrameRate.fps25.numberDescription == "25")
+        #expect(SMPTEFrameRate.fps2997.numberDescription == "29.97")
+        #expect(SMPTEFrameRate.fps2997Drop.numberDescription == "29.97")
+        #expect(SMPTEFrameRate.fps30.numberDescription == "30")
+        #expect(SMPTEFrameRate.fps30Drop.numberDescription == "30")
+        #expect(SMPTEFrameRate.fps50.numberDescription == "50")
+        #expect(SMPTEFrameRate.fps5994.numberDescription == "59.94")
+        #expect(SMPTEFrameRate.fps5994Drop.numberDescription == "59.94")
+        #expect(SMPTEFrameRate.fps60.numberDescription == "60")
+        #expect(SMPTEFrameRate.fps60Drop.numberDescription == "60")
+    }
+
     @Test
     func numberValue() {
         #expect(SMPTEFrameRate.fps23976.numberValue == Number(numerator: 24_000, denominator: 1_001))

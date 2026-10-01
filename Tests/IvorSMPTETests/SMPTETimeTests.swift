@@ -392,4 +392,83 @@ extension SMPTETimeTests {
         #expect(time?.frame == 12)
         #expect(time?.subframe == 34)
     }
+
+    @Test(arguments: SMPTEFrameRate.allCases, SMPTEFrameRate.allCases)
+    func retimed(from source: SMPTEFrameRate,
+                 to target: SMPTEFrameRate) {
+        for (minute, second) in [(0, 0), (1, 0), (1, 1), (10, 0), (59, 59)] as [(UInt, UInt)] {
+            for frame in 0..<source.uintValue {
+                guard let time = SMPTETime(frameRate: source, hour: 23, minute: minute, second: second, frame: frame, subframe: 37)
+                else { continue }
+
+                let result = time.retimed(to: target)
+                let clampedFrame = min(frame, target.uintValue - 1)
+
+                #expect(result.frameRate == target)
+                #expect(result.hour == 23)
+                #expect(result.minute == minute)
+                #expect(result.second == second)
+                #expect(result.subframe == 37)
+
+                if SMPTETime(frameRate: target, hour: 23, minute: minute, second: second, frame: clampedFrame, subframe: 0) != nil {
+                    #expect(result.frame == clampedFrame)
+                } else {
+                    #expect(result.frame == target.droppedFramesPerMinute)
+                }
+            }
+        }
+    }
+
+    @Test
+    func retimed_clampsFrame() throws {
+        let time = try #require(SMPTETime(frameRate: .fps50, hour: 0, minute: 0, second: 10, frame: 49, subframe: 0))
+
+        #expect(time.retimed(to: .fps25).description == "00:00:10:24")
+        #expect(time.retimed(to: .fps2997Drop).description == "00:00:10;29")
+        #expect(time.retimed(to: .fps60).description == "00:00:10:49")
+    }
+
+    @Test
+    func retimed_droppedFrame() throws {
+        let time1 = try #require(SMPTETime(frameRate: .fps30, hour: 0, minute: 1, second: 0, frame: 0, subframe: 0))
+        let time2 = try #require(SMPTETime(frameRate: .fps25, hour: 0, minute: 1, second: 0, frame: 1, subframe: 0))
+        let time3 = try #require(SMPTETime(frameRate: .fps60, hour: 0, minute: 1, second: 0, frame: 3, subframe: 0))
+
+        #expect(time1.retimed(to: .fps2997Drop).description == "00:01:00;02")
+        #expect(time1.retimed(to: .fps30Drop).description == "00:01:00;02")
+        #expect(time2.retimed(to: .fps2997Drop).description == "00:01:00;02")
+        #expect(time3.retimed(to: .fps5994Drop).description == "00:01:00;04")
+        #expect(time3.retimed(to: .fps60Drop).description == "00:01:00;04")
+        #expect(time3.retimed(to: .fps2997Drop).description == "00:01:00;03")
+    }
+
+    @Test
+    func retimed_keepsComponents() throws {
+        let time = try #require(SMPTETime(frameRate: .fps25, hour: 1, minute: 0, second: 0, frame: 0, subframe: 0))
+
+        #expect(time.retimed(to: .fps2997Drop).description == "01:00:00;00")
+        #expect(time.retimed(to: .fps24).description == "01:00:00:00")
+        #expect(time.retimed(to: .fps24).elapsedSeconds == 3_600)
+    }
+
+    @Test
+    func retimed_keepsSubframe() throws {
+        let time = try #require(SMPTETime(frameRate: .fps2997Drop, hour: 0, minute: 0, second: 3, frame: 12, subframe: 50))
+
+        #expect(time.retimed(to: .fps25).description == "00:00:03:12.50")
+    }
+
+    @Test(arguments: SMPTEFrameRate.allCases)
+    func retimed_sameFrameRate(frameRate: SMPTEFrameRate) throws {
+        let time = try #require(SMPTETime(string: "12:34:56:07.89", frameRate: frameRate))
+
+        #expect(time.retimed(to: frameRate) == time)
+    }
+
+    @Test
+    func retimed_tenthMinuteKeepsFrameZero() throws {
+        let time = try #require(SMPTETime(frameRate: .fps30, hour: 0, minute: 10, second: 0, frame: 0, subframe: 0))
+
+        #expect(time.retimed(to: .fps2997Drop).description == "00:10:00;00")
+    }
 }

@@ -197,6 +197,39 @@ extension SMPTETime {
         return frameNumber - (dropped * (totalMinutes - (totalMinutes / 10)))
     }
 
+    // MARK: Public Instance Methods
+
+    /// Returns this timecode at a different frame rate, keeping its hour,
+    /// minute, second, and subframe components.
+    ///
+    /// Unlike converting through ``elapsedSeconds``, this keeps the timecode
+    /// as written: 01:00:00:00 at 25 frames per second becomes 01:00:00:00 at
+    /// any other frame rate. The frame component is clamped to the last frame
+    /// number of the new frame rate; and, at a drop-frame rate, a frame number
+    /// that drop-frame timecode skips becomes the first frame number it keeps,
+    /// so 00:01:00:00 at 30 frames per second becomes 00:01:00;02 at 29.97
+    /// drop-frame.
+    ///
+    /// - Parameter frameRate:  The new SMPTE frame rate.
+    ///
+    /// - Returns:  The retimed timecode.
+    public func retimed(to frameRate: SMPTEFrameRate) -> SMPTETime {
+        var frame = min(frame, frameRate.uintValue - 1)
+
+        if Self._isDroppedFrame(frameRate, minute, second, frame) {
+            frame = frameRate.droppedFramesPerMinute
+        }
+
+        // The frame is now within range and not skipped by drop-frame
+        // timecode, and every other component is unchanged.
+        return SMPTETime(frameRate: frameRate,
+                         hour: hour,
+                         minute: minute,
+                         second: second,
+                         frame: frame,
+                         subframe: subframe)!   // swiftlint:disable:this force_unwrapping
+    }
+
     // MARK: Private Type Methods
 
     private static func _convertToFrameNumber(_ frameCount: UInt,
